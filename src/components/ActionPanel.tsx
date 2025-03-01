@@ -1,6 +1,7 @@
 import React from 'react';
 import { Player, GamePhase } from '../types';
 import { DollarSign, ArrowRight, Home, AlertTriangle, RefreshCw, Award, HelpCircle, Dices } from 'lucide-react';
+import SoundManager from '../utils/SoundManager';
 
 interface ActionPanelProps {
   gamePhase: GamePhase;
@@ -21,6 +22,12 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
   onEndTurn,
   onResetGame
 }) => {
+  // Function to play button click sound and execute the provided action
+  const handleButtonClick = (action: () => void) => {
+    SoundManager.getInstance().play('button-click');
+    action();
+  };
+
   if (!currentPlayer) return null;
   
   // Helper function to get phase description
@@ -92,7 +99,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
         {gamePhase === GamePhase.Rolling && (
           <button
             className={`w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-lg font-bold hover:from-blue-600 hover:to-blue-700 transition-all transform hover:scale-105 flex items-center justify-center ${getButtonAnimation()}`}
-            onClick={onRollDice}
+            onClick={() => handleButtonClick(onRollDice)}
             disabled={currentPlayer.isAI}
           >
             <Dices className="mr-2" />
@@ -104,7 +111,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
           <div className="space-y-3">
             <button
               className={`w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-lg font-bold hover:from-green-600 hover:to-green-700 transition-all transform hover:scale-105 flex items-center justify-center ${getButtonAnimation()}`}
-              onClick={onStartAuction}
+              onClick={() => handleButtonClick(onStartAuction)}
               disabled={currentPlayer.isAI}
             >
               <DollarSign className="mr-2" />
@@ -113,7 +120,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
             
             <button
               className="w-full bg-gradient-to-r from-gray-400 to-gray-500 text-white py-3 rounded-lg font-bold hover:from-gray-500 hover:to-gray-600 transition-all flex items-center justify-center"
-              onClick={onPass}
+              onClick={() => handleButtonClick(onPass)}
               disabled={currentPlayer.isAI}
             >
               <ArrowRight className="mr-2" />
@@ -125,7 +132,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
         {gamePhase === GamePhase.EndTurn && (
           <button
             className={`w-full bg-gradient-to-r from-indigo-500 to-indigo-600 text-white py-3 rounded-lg font-bold hover:from-indigo-600 hover:to-indigo-700 transition-all transform hover:scale-105 flex items-center justify-center ${getButtonAnimation()}`}
-            onClick={onEndTurn}
+            onClick={() => handleButtonClick(onEndTurn)}
             disabled={currentPlayer.isAI}
           >
             <ArrowRight className="mr-2" />
@@ -136,7 +143,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
         {gamePhase === GamePhase.GameOver && (
           <button
             className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-3 rounded-lg font-bold hover:from-red-600 hover:to-red-700 transition-all transform hover:scale-105 flex items-center justify-center"
-            onClick={onResetGame}
+            onClick={() => handleButtonClick(onResetGame)}
           >
             <RefreshCw className="mr-2" />
             New Game

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Property, Player } from '../types';
+import SoundManager from '../utils/SoundManager';
 
 interface AuctionPanelProps {
   property: Property | null;
@@ -32,6 +33,12 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
   bidIncrement,
   setBidIncrement
 }) => {
+  // Function to play button click sound and execute the provided action
+  const handleButtonClick = (action: () => void) => {
+    SoundManager.getInstance().play('button-click');
+    action();
+  };
+
   if (!property) return null;
   
   const currentPlayer = players[currentBidder];
@@ -109,7 +116,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
                   max={currentPlayer?.money}
                 />
                 <button
-                  onClick={onPlaceBid}
+                  onClick={() => handleButtonClick(onPlaceBid)}
                   className="inline-flex items-center px-4 py-2 border border-l-0 border-gray-300 rounded-r-md bg-blue-600 text-white hover:bg-blue-700"
                 >
                   Bid
@@ -141,7 +148,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
             
             {/* Quick bid button */}
             <button
-              onClick={onIncrementBid}
+              onClick={() => handleButtonClick(onIncrementBid)}
               className="w-full bg-green-500 text-white py-2 rounded-lg font-bold hover:bg-green-600 transition-colors mb-3"
               disabled={highestBid + bidIncrement > currentPlayer?.money}
             >
@@ -150,7 +157,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
             
             {/* Pass button */}
             <button
-              onClick={onPassBid}
+              onClick={() => handleButtonClick(onPassBid)}
               className="w-full bg-gray-500 text-white py-2 rounded-lg font-bold hover:bg-gray-600 transition-colors"
             >
               Pass

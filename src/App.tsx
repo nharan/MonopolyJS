@@ -4,10 +4,12 @@ import Board from './components/Board';
 import PlayerPanel from './components/PlayerPanel';
 import ActionPanel from './components/ActionPanel';
 import AuctionPanel from './components/AuctionPanel';
+import SoundToggle from './components/SoundToggle';
 import { Player, Property, GamePhase, GameState, Card, CardType, AIStrategy } from './types';
 import { initialProperties, chanceCards, communityChestCards } from './data';
 import { AIStrategyFactory } from './ai/AIStrategyFactory';
 import { AIDecisionContext } from './ai/AIStrategyInterface';
+import SoundManager from './utils/SoundManager';
 
 function App() {
   const [gameState, setGameState] = useState<GameState>({
@@ -205,6 +207,9 @@ function App() {
       return;
     }
 
+    // Play game start sound
+    SoundManager.getInstance().play('game-start');
+
     const playerColors = ["#FF5252", "#4CAF50", "#2196F3", "#FFC107"];
     const playerTokens = ["🚗", "🚢", "🎩", "🐕"];
     
@@ -269,6 +274,9 @@ function App() {
   const rollDice = () => {
     if (gameState.phase !== GamePhase.Rolling) return;
 
+    // Play dice roll sound
+    SoundManager.getInstance().play('dice-roll');
+
     const die1 = Math.floor(Math.random() * 6) + 1;
     const die2 = Math.floor(Math.random() * 6) + 1;
     const diceSum = die1 + die2;
@@ -287,6 +295,9 @@ function App() {
         currentPlayer.inJail = false;
         currentPlayer.jailTurns = 0;
         newMessage = `${currentPlayer.name} rolled doubles and got out of jail!`;
+        
+        // Play get out of jail sound
+        SoundManager.getInstance().play('get-out-of-jail');
       } else {
         currentPlayer.jailTurns += 1;
         if (currentPlayer.jailTurns >= 3) {
@@ -312,6 +323,9 @@ function App() {
         newPhase = GamePhase.EndTurn;
         doubleRollCount = 0;
         shouldAutoEndTurn = true; // Auto end turn when sent to jail
+        
+        // Play go to jail sound
+        SoundManager.getInstance().play('go-to-jail');
       } else {
         // Normal movement
         newPosition = (currentPlayer.position + diceSum) % 40;
@@ -334,10 +348,16 @@ function App() {
             // Player receives money
             currentPlayer.money += currentPlayer.goSalary;
             newMessage = `${currentPlayer.name} passed GO and collected $${currentPlayer.goSalary}!`;
+            
+            // Play pass GO sound
+            SoundManager.getInstance().play('pass-go');
           } else {
             // Player pays money (recession)
             currentPlayer.money -= currentPlayer.goSalary;
             newMessage = `${currentPlayer.name} passed GO during recession and paid $${currentPlayer.goSalary}!`;
+            
+            // Play pay tax sound (similar to paying during recession)
+            SoundManager.getInstance().play('pay-tax');
             
             // Check for bankruptcy
             if (currentPlayer.money < 0) {
@@ -349,6 +369,9 @@ function App() {
         }
         
         currentPlayer.position = newPosition;
+        
+        // Play player move sound
+        SoundManager.getInstance().play('player-move');
         
         // Handle landing on different spaces
         const landedSpace = gameState.properties.find(p => p.position === newPosition);
@@ -365,6 +388,9 @@ function App() {
               if (owner && !owner.bankrupt) {
                 let rent = calculateRent(landedSpace, diceSum, gameState.players, gameState.properties);
                 currentPlayer.money -= rent;
+                
+                // Play pay rent sound
+                SoundManager.getInstance().play('pay-rent');
                 
                 const updatedPlayers = [...gameState.players];
                 const ownerIndex = updatedPlayers.findIndex(p => p.id === landedSpace.ownerId);
@@ -420,6 +446,9 @@ function App() {
             shouldAutoEndTurn = true; // Auto end turn after paying tax
             newPhase = GamePhase.EndTurn; // Set phase to EndTurn
             
+            // Play pay tax sound
+            SoundManager.getInstance().play('pay-tax');
+            
             // Check for bankruptcy
             if (currentPlayer.money < 0) {
               currentPlayer.bankrupt = true;
@@ -458,6 +487,9 @@ function App() {
             newMessage = `${currentPlayer.name} went to jail!`;
             shouldAutoEndTurn = true; // Auto end turn when sent to jail
             newPhase = GamePhase.EndTurn; // Set phase to EndTurn
+            
+            // Play go to jail sound
+            SoundManager.getInstance().play('go-to-jail');
           } else if (landedSpace.position === 20) {
             // Free parking - nothing happens
             newMessage = `${currentPlayer.name} landed on Free Parking.`;
@@ -599,6 +631,9 @@ function App() {
     const property = gameState.properties.find(p => p.position === gameState.players[gameState.currentPlayerIndex].position);
     if (!property || property.ownerId !== null) return;
     
+    // Play auction start sound
+    SoundManager.getInstance().play('auction-start');
+    
     // Initialize auction bids
     const auctionBids: Record<number, number> = {};
     gameState.players.forEach(player => {
@@ -650,6 +685,9 @@ function App() {
       });
       return;
     }
+    
+    // Play bid sound
+    SoundManager.getInstance().play('auction-bid');
     
     // Update auction state
     const newBids = { ...gameState.auctionBids };
@@ -741,6 +779,9 @@ function App() {
       const winner = gameState.players.find(p => p.id === auctionHighestBidder);
       if (!winner) return;
       
+      // Play auction win sound
+      SoundManager.getInstance().play('auction-win');
+      
       // Update property owner
       const updatedProperties = gameState.properties.map(p => 
         p.position === auctionProperty.position 
@@ -796,6 +837,9 @@ function App() {
   const endTurn = () => {
     if (gameState.phase !== GamePhase.EndTurn) return;
     
+    // Play turn start sound for next player
+    SoundManager.getInstance().play('turn-start');
+    
     // Check if current player rolled doubles
     const rolledDoubles = gameState.dice[0] === gameState.dice[1];
     
@@ -841,6 +885,10 @@ function App() {
     
     if (activePlayers.length <= 1) {
       const winner = activePlayers[0];
+      
+      // Play game over sound
+      SoundManager.getInstance().play('game-over');
+      
       setGameState(prevState => ({
         ...prevState,
         phase: GamePhase.GameOver,
@@ -888,7 +936,10 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-center mb-4">Monopoly</h1>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-3xl font-bold">Monopoly</h1>
+          <SoundToggle />
+        </div>
         
         {/* Game message */}
         <div className="bg-white p-4 rounded-lg shadow mb-4 text-center">
