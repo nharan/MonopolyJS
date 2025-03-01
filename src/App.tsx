@@ -982,53 +982,57 @@ function App() {
                   {renderDie(gameState.dice[1])}
                 </div>
               )}
-            </div>
-            
-            {/* Center - Game board */}
-            <div className="lg:col-span-6 flex justify-center">
-              <Board 
-                properties={gameState.properties}
-                players={gameState.players}
-              />
-            </div>
-            
-            {/* Right panel - Actions */}
-            <div className="lg:col-span-3">
+              
+              {/* Action panel moved here */}
               {gameState.phase === GamePhase.Auctioning ? (
-                <AuctionPanel 
-                  property={gameState.auctionProperty}
-                  players={gameState.players}
-                  currentBidder={gameState.auctionCurrentBidder}
-                  highestBid={gameState.auctionHighestBid}
-                  highestBidder={gameState.auctionHighestBidder}
-                  bids={gameState.auctionBids}
-                  onPlaceBid={() => {
-                    const amount = parseInt(bidAmount);
-                    if (!isNaN(amount) && amount > 0) {
-                      placeBid(amount);
-                    }
-                  }}
-                  onIncrementBid={() => {
-                    const currentBid = gameState.auctionHighestBid;
-                    placeBid(currentBid + bidIncrement);
-                  }}
-                  onPassBid={passBid}
-                  bidAmount={bidAmount}
-                  setBidAmount={setBidAmount}
-                  bidIncrement={bidIncrement}
-                  setBidIncrement={setBidIncrement}
-                />
+                <div className="mt-4">
+                  <AuctionPanel 
+                    property={gameState.auctionProperty}
+                    players={gameState.players}
+                    currentBidder={gameState.auctionCurrentBidder}
+                    highestBid={gameState.auctionHighestBid}
+                    highestBidder={gameState.auctionHighestBidder}
+                    bids={gameState.auctionBids}
+                    onPlaceBid={() => {
+                      const amount = parseInt(bidAmount);
+                      if (!isNaN(amount) && amount > 0) {
+                        placeBid(amount);
+                      }
+                    }}
+                    onIncrementBid={() => {
+                      const currentBid = gameState.auctionHighestBid;
+                      placeBid(currentBid + bidIncrement);
+                    }}
+                    onPassBid={passBid}
+                    bidAmount={bidAmount}
+                    setBidAmount={setBidAmount}
+                    bidIncrement={bidIncrement}
+                    setBidIncrement={setBidIncrement}
+                  />
+                </div>
               ) : (
-                <ActionPanel 
-                  gamePhase={gameState.phase}
-                  currentPlayer={gameState.players[gameState.currentPlayerIndex]}
-                  onRollDice={rollDice}
-                  onStartAuction={startAuction}
-                  onPass={pass}
-                  onEndTurn={endTurn}
-                  onResetGame={resetGame}
-                />
+                <div className="mt-4">
+                  <ActionPanel 
+                    gamePhase={gameState.phase}
+                    currentPlayer={gameState.players[gameState.currentPlayerIndex]}
+                    onRollDice={rollDice}
+                    onStartAuction={startAuction}
+                    onPass={pass}
+                    onEndTurn={endTurn}
+                    onResetGame={resetGame}
+                  />
+                </div>
               )}
+            </div>
+            
+            {/* Center - Game board (now spans 9 columns instead of 6) */}
+            <div className="lg:col-span-9 flex justify-center">
+              <div className="w-full max-w-4xl">
+                <Board 
+                  properties={gameState.properties}
+                  players={gameState.players}
+                />
+              </div>
             </div>
           </div>
         )}

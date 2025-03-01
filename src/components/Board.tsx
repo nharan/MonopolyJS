@@ -8,10 +8,10 @@ interface BoardProps {
 
 const Board: React.FC<BoardProps> = ({ properties, players }) => {
   // Board layout configuration
-  const boardSize = 600; // Overall board size in pixels
-  const cornerSize = 80; // Size of corner squares
-  const sideSquareWidth = 40; // Width of side squares (reduced to fit all properties)
-  const sideSquareHeight = 60; // Height of side squares (reduced to fit all properties)
+  const boardSize = 800; // Increased from 600 to 800 for better visibility
+  const cornerSize = 100; // Increased from 80 to 100
+  const sideSquareWidth = 53; // Increased from 40 to 53
+  const sideSquareHeight = 80; // Increased from 60 to 80
   
   // Helper function to get property color
   const getPropertyColor = (property: Property): string => {
@@ -166,10 +166,10 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
         {/* Center logo */}
         <g transform={`translate(${boardSize/2}, ${boardSize/2})`}>
           <rect 
-            x="-120" 
-            y="-40" 
-            width="240" 
-            height="80" 
+            x="-160" 
+            y="-50" 
+            width="320" 
+            height="100" 
             fill="#ecfdf5" 
             rx="10" 
             transform="rotate(0)"
@@ -178,7 +178,7 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
           />
           <text 
             textAnchor="middle" 
-            fontSize="48" 
+            fontSize="64" 
             fontWeight="bold" 
             fill="#047857" 
             transform="rotate(0)"
@@ -214,7 +214,7 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
                   x="0" 
                   y="0" 
                   width={pos.width} 
-                  height="12" 
+                  height="16" 
                   fill={getPropertyColor(property)}
                 />
               )}
@@ -225,7 +225,7 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
                   x="0" 
                   y="0" 
                   width={pos.width} 
-                  height="12" 
+                  height="16" 
                   fill="#1f2937"
                 />
               )}
@@ -235,7 +235,7 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
                   x="0" 
                   y="0" 
                   width={pos.width} 
-                  height="12" 
+                  height="16" 
                   fill="#4b5563"
                 />
               )}
@@ -245,41 +245,41 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
                   x="0" 
                   y="0" 
                   width={pos.width} 
-                  height="12" 
+                  height="16" 
                   fill="#7c2d12"
                 />
               )}
               
               {/* Special icons for corners and special spaces */}
               {property.position === 0 && (
-                <text x={pos.width/2} y={pos.height/2} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#0369a1">GO</text>
+                <text x={pos.width/2} y={pos.height/2} textAnchor="middle" fontSize="24" fontWeight="bold" fill="#0369a1">GO</text>
               )}
               {property.position === 10 && (
-                <text x={pos.width/2} y={pos.height/2} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#b91c1c">JAIL</text>
+                <text x={pos.width/2} y={pos.height/2} textAnchor="middle" fontSize="24" fontWeight="bold" fill="#b91c1c">JAIL</text>
               )}
               {property.position === 20 && (
-                <text x={pos.width/2} y={pos.height/2 - 10} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#047857">FREE</text>
+                <text x={pos.width/2} y={pos.height/2 - 15} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#047857">FREE</text>
               )}
               {property.position === 20 && (
-                <text x={pos.width/2} y={pos.height/2 + 10} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#047857">PARKING</text>
+                <text x={pos.width/2} y={pos.height/2 + 15} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#047857">PARKING</text>
               )}
               {property.position === 30 && (
-                <text x={pos.width/2} y={pos.height/2 - 10} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#b91c1c">GO TO</text>
+                <text x={pos.width/2} y={pos.height/2 - 15} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#b91c1c">GO TO</text>
               )}
               {property.position === 30 && (
-                <text x={pos.width/2} y={pos.height/2 + 10} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#b91c1c">JAIL</text>
+                <text x={pos.width/2} y={pos.height/2 + 15} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#b91c1c">JAIL</text>
               )}
               
               {/* Property name - only for non-corner spaces */}
               {!isCorner && (
                 <text 
                   x={pos.width/2} 
-                  y={property.type === 'property' || property.type === 'railroad' || property.type === 'utility' || property.type === 'tax' ? 22 : 20} 
+                  y={property.type === 'property' || property.type === 'railroad' || property.type === 'utility' || property.type === 'tax' ? 30 : 25} 
                   textAnchor="middle" 
-                  fontSize="7" 
+                  fontSize="9" 
                   fontWeight="bold"
                 >
-                  {property.name.length > 10 ? property.name.substring(0, 8) + '...' : property.name}
+                  {property.name.length > 12 ? property.name.substring(0, 10) + '...' : property.name}
                 </text>
               )}
               
@@ -287,9 +287,10 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
               {property.price > 0 && !isCorner && (
                 <text 
                   x={pos.width/2} 
-                  y={pos.height - 8} 
+                  y={pos.height - 10} 
                   textAnchor="middle" 
-                  fontSize="8"
+                  fontSize="11"
+                  fontWeight="medium"
                 >
                   ${property.price}
                 </text>
@@ -308,8 +309,8 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
             .findIndex(p => p.id === player.id);
           
           // Calculate player token position within the property
-          const tokenSize = 16;
-          const tokenMargin = 4;
+          const tokenSize = 22;
+          const tokenMargin = 5;
           const tokensPerRow = Math.floor(pos.width / (tokenSize + tokenMargin));
           const row = Math.floor(playerIndex / tokensPerRow);
           const col = playerIndex % tokensPerRow;
@@ -325,15 +326,17 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
                 r={tokenSize/2} 
                 fill={player.color} 
                 stroke="white" 
-                strokeWidth="1.5"
+                strokeWidth="2"
+                filter="drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.25))"
               />
               <text 
                 x={tokenSize/2} 
-                y={tokenSize/2 + 3} 
+                y={tokenSize/2 + 4} 
                 textAnchor="middle" 
-                fontSize="10" 
+                fontSize="14" 
                 fill="white"
                 fontWeight="bold"
+                style={{ textShadow: '1px 1px 1px rgba(0, 0, 0, 0.5)' }}
               >
                 {player.token}
               </text>
