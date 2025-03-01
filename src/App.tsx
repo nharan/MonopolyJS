@@ -429,19 +429,27 @@ function App() {
             // Draw chance card
             const card = drawCard('chance');
             if (card) {
-              applyCard(card, currentPlayer);
+              const handledByCard = applyCard(card, currentPlayer);
               newMessage = `${currentPlayer.name} drew a Chance card: ${card.description}`;
-              shouldAutoEndTurn = true; // Auto end turn after drawing card
-              newPhase = GamePhase.EndTurn; // Set phase to EndTurn
+              
+              // Only auto-end turn if the card didn't handle it (e.g., by moving to an unowned property)
+              if (!handledByCard) {
+                shouldAutoEndTurn = true;
+                newPhase = GamePhase.EndTurn;
+              }
             }
           } else if (landedSpace.type === 'community') {
             // Draw community chest card
             const card = drawCard('community');
             if (card) {
-              applyCard(card, currentPlayer);
+              const handledByCard = applyCard(card, currentPlayer);
               newMessage = `${currentPlayer.name} drew a Community Chest card: ${card.description}`;
-              shouldAutoEndTurn = true; // Auto end turn after drawing card
-              newPhase = GamePhase.EndTurn; // Set phase to EndTurn
+              
+              // Only auto-end turn if the card didn't handle it (e.g., by moving to an unowned property)
+              if (!handledByCard) {
+                shouldAutoEndTurn = true;
+                newPhase = GamePhase.EndTurn;
+              }
             }
           } else if (landedSpace.position === 30) {
             // Go to jail
@@ -514,6 +522,20 @@ function App() {
             player.money += player.goSalary;
           }
           player.position = card.value;
+          
+          // Check if the player landed on an unowned property
+          const landedProperty = gameState.properties.find(p => p.position === card.value);
+          if (landedProperty && 
+              (landedProperty.type === 'property' || landedProperty.type === 'railroad' || landedProperty.type === 'utility') && 
+              landedProperty.ownerId === null) {
+            // Set the game phase to PropertyAction so the player can auction or pass
+            setGameState(prevState => ({
+              ...prevState,
+              phase: GamePhase.PropertyAction,
+              message: `${player.name} landed on ${landedProperty.name}. Auction or pass?`
+            }));
+            return true; // Return true to indicate we've handled the game state update
+          }
         }
         break;
       case 'money':
@@ -539,6 +561,7 @@ function App() {
         }
         break;
     }
+    return false; // Return false to indicate normal processing should continue
   };
 
   const calculateRent = (property: Property, diceRoll: number, players: Player[], properties: Property[]): number => {
@@ -924,7 +947,7 @@ function App() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   AI Strategy:
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                   <button 
                     className={`py-2 px-3 rounded-md text-sm ${aiStrategy === AIStrategy.Passive 
                       ? 'bg-blue-500 text-white' 
@@ -949,11 +972,20 @@ function App() {
                   >
                     Aggressive
                   </button>
+                  <button 
+                    className={`py-2 px-3 rounded-md text-sm ${aiStrategy === AIStrategy.Adaptive 
+                      ? 'bg-blue-500 text-white' 
+                      : 'bg-gray-200 text-gray-700'}`}
+                    onClick={() => setAIStrategy(AIStrategy.Adaptive)}
+                  >
+                    Adaptive
+                  </button>
                 </div>
                 <p className="text-sm text-gray-500 mt-1">
                   {aiStrategy === AIStrategy.Passive && "Passive AIs bid conservatively and are less likely to start auctions."}
                   {aiStrategy === AIStrategy.Balanced && "Balanced AIs use moderate bidding strategies."}
                   {aiStrategy === AIStrategy.Aggressive && "Aggressive AIs bid higher and are more likely to start auctions."}
+                  {aiStrategy === AIStrategy.Adaptive && "Adaptive AIs adjust bidding based on economic conditions and monopoly potential."}
                 </p>
               </div>
             )}

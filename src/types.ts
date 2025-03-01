@@ -10,7 +10,8 @@ export enum GamePhase {
 export enum AIStrategy {
   Passive = 'passive',
   Balanced = 'balanced',
-  Aggressive = 'aggressive'
+  Aggressive = 'aggressive',
+  Adaptive = 'adaptive'
 }
 
 export interface Player {
