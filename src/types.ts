@@ -4,7 +4,8 @@ export enum GamePhase {
   PropertyAction = 'propertyAction',
   Auctioning = 'auctioning',
   EndTurn = 'endTurn',
-  GameOver = 'gameOver'
+  GameOver = 'gameOver',
+  JailDecision = 'jailDecision' // New phase for when a player is in jail and needs to decide
 }
 
 export enum AIStrategy {

@@ -4,6 +4,7 @@ import Board from './components/Board';
 import PlayerPanel from './components/PlayerPanel';
 import ActionPanel from './components/ActionPanel';
 import AuctionPanel from './components/AuctionPanel';
+import JailActionPanel from './components/JailActionPanel';
 import SoundToggle from './components/SoundToggle';
 import { Player, Property, GamePhase, GameState, Card, CardType, AIStrategy } from './types';
 import { initialProperties, chanceCards, communityChestCards } from './data';
@@ -137,6 +138,19 @@ function App() {
         // All AIs roll the dice when it's their turn
         setTimeout(() => {
           rollDice();
+        }, thinkingTime);
+        break;
+        
+      case GamePhase.JailDecision:
+        // AI in jail - decide whether to pay or roll
+        setTimeout(() => {
+          // AI will pay to get out if they have enough money and it's their 2nd or 3rd turn in jail
+          // Otherwise, they'll try to roll doubles
+          if (currentPlayer.money >= 50 && currentPlayer.jailTurns >= 1) {
+            payJailFine();
+          } else {
+            rollForJail();
+          }
         }, thinkingTime);
         break;
         
@@ -479,22 +493,22 @@ function App() {
                 shouldAutoEndTurn = true;
                 newPhase = GamePhase.EndTurn;
               }
+            } else if (landedSpace.position === 30) {
+              // Go to jail
+              currentPlayer.position = 10;
+              currentPlayer.inJail = true;
+              newMessage = `${currentPlayer.name} went to jail!`;
+              shouldAutoEndTurn = true; // Auto end turn when sent to jail
+              newPhase = GamePhase.EndTurn; // Set phase to EndTurn
+              
+              // Play go to jail sound
+              SoundManager.getInstance().play('go-to-jail');
+            } else if (landedSpace.position === 20) {
+              // Free parking - nothing happens
+              newMessage = `${currentPlayer.name} landed on Free Parking.`;
+              shouldAutoEndTurn = true; // Auto end turn on free parking
+              newPhase = GamePhase.EndTurn; // Set phase to EndTurn
             }
-          } else if (landedSpace.position === 30) {
-            // Go to jail
-            currentPlayer.position = 10;
-            currentPlayer.inJail = true;
-            newMessage = `${currentPlayer.name} went to jail!`;
-            shouldAutoEndTurn = true; // Auto end turn when sent to jail
-            newPhase = GamePhase.EndTurn; // Set phase to EndTurn
-            
-            // Play go to jail sound
-            SoundManager.getInstance().play('go-to-jail');
-          } else if (landedSpace.position === 20) {
-            // Free parking - nothing happens
-            newMessage = `${currentPlayer.name} landed on Free Parking.`;
-            shouldAutoEndTurn = true; // Auto end turn on free parking
-            newPhase = GamePhase.EndTurn; // Set phase to EndTurn
           }
         }
       }
@@ -871,12 +885,19 @@ function App() {
       return;
     }
     
+    // Check if next player is in jail
+    const nextPlayer = gameState.players[nextPlayerIndex];
+    const nextPhase = nextPlayer.inJail ? GamePhase.JailDecision : GamePhase.Rolling;
+    const nextMessage = nextPlayer.inJail 
+      ? `${nextPlayer.name}'s turn. They are in jail (turn ${nextPlayer.jailTurns + 1} of 3).` 
+      : `${nextPlayer.name}'s turn. Roll the dice!`;
+    
     setGameState({
       ...gameState,
       currentPlayerIndex: nextPlayerIndex,
-      phase: GamePhase.Rolling,
+      phase: nextPhase,
       doubleRollCount: 0,
-      message: `${gameState.players[nextPlayerIndex].name}'s turn. Roll the dice!`
+      message: nextMessage
     });
   };
 
@@ -931,6 +952,130 @@ function App() {
       case 6: return <Dice6 size={32} />;
       default: return <Dice1 size={32} />;
     }
+  };
+
+  // New function to handle rolling dice when in jail
+  const rollForJail = () => {
+    if (gameState.phase !== GamePhase.JailDecision) return;
+
+    // Play dice roll sound
+    SoundManager.getInstance().play('dice-roll');
+
+    const die1 = Math.floor(Math.random() * 6) + 1;
+    const die2 = Math.floor(Math.random() * 6) + 1;
+    const isDoubles = die1 === die2;
+    
+    const currentPlayer = { ...gameState.players[gameState.currentPlayerIndex] };
+    let newMessage = "";
+    let newPhase = GamePhase.EndTurn;
+    let shouldAutoEndTurn = true;
+    
+    if (isDoubles) {
+      // Player rolled doubles and gets out of jail
+      currentPlayer.inJail = false;
+      currentPlayer.jailTurns = 0;
+      newMessage = `${currentPlayer.name} rolled doubles and got out of jail!`;
+      
+      // Play get out of jail sound
+      SoundManager.getInstance().play('get-out-of-jail');
+      
+      // Move the player according to the dice roll
+      currentPlayer.position = (currentPlayer.position + die1 + die2) % 40;
+      
+      // Play player move sound
+      SoundManager.getInstance().play('player-move');
+      
+      // Handle landing on different spaces (similar to rollDice function)
+      const landedSpace = gameState.properties.find(p => p.position === currentPlayer.position);
+      
+      if (landedSpace) {
+        if (landedSpace.type === 'property' || landedSpace.type === 'railroad' || landedSpace.type === 'utility') {
+          if (landedSpace.ownerId === null) {
+            // Unowned property - start auction
+            newPhase = GamePhase.PropertyAction;
+            newMessage = `${currentPlayer.name} got out of jail and landed on ${landedSpace.name}. Auction or pass?`;
+            shouldAutoEndTurn = false;
+          }
+          // ... handle other landing cases ...
+        }
+        // ... handle other space types ...
+      }
+    } else {
+      // Player didn't roll doubles
+      currentPlayer.jailTurns += 1;
+      
+      if (currentPlayer.jailTurns >= 3) {
+        // Player has been in jail for 3 turns, must pay $50 to get out
+        currentPlayer.inJail = false;
+        currentPlayer.jailTurns = 0;
+        currentPlayer.money -= 50;
+        newMessage = `${currentPlayer.name} paid $50 to get out of jail after 3 turns.`;
+        
+        // Check for bankruptcy
+        if (currentPlayer.money < 0) {
+          currentPlayer.bankrupt = true;
+          newMessage += ` ${currentPlayer.name} went bankrupt!`;
+        }
+      } else {
+        newMessage = `${currentPlayer.name} didn't roll doubles and is still in jail (turn ${currentPlayer.jailTurns} of 3).`;
+      }
+    }
+    
+    // Update player in the players array
+    const updatedPlayers = [...gameState.players];
+    updatedPlayers[gameState.currentPlayerIndex] = currentPlayer;
+    
+    setGameState(prevState => ({
+      ...prevState,
+      players: updatedPlayers,
+      phase: newPhase,
+      dice: [die1, die2],
+      message: newMessage
+    }));
+    
+    // Check for game over
+    checkGameOver(updatedPlayers);
+    
+    // Auto end turn if needed
+    if (shouldAutoEndTurn) {
+      setTimeout(() => {
+        endTurn();
+      }, 1500);
+    }
+  };
+
+  // New function to pay jail fine
+  const payJailFine = () => {
+    if (gameState.phase !== GamePhase.JailDecision) return;
+    
+    const currentPlayer = { ...gameState.players[gameState.currentPlayerIndex] };
+    
+    if (currentPlayer.money < 50) {
+      setGameState(prevState => ({
+        ...prevState,
+        message: `${currentPlayer.name} doesn't have enough money to pay the jail fine.`
+      }));
+      return;
+    }
+    
+    // Pay the fine and get out of jail
+    currentPlayer.money -= 50;
+    currentPlayer.inJail = false;
+    currentPlayer.jailTurns = 0;
+    
+    // Play sound
+    SoundManager.getInstance().play('pay-tax');
+    
+    // Update player in the players array
+    const updatedPlayers = [...gameState.players];
+    updatedPlayers[gameState.currentPlayerIndex] = currentPlayer;
+    
+    setGameState(prevState => ({
+      ...prevState,
+      players: updatedPlayers,
+      phase: GamePhase.Rolling,
+      message: `${currentPlayer.name} paid $50 to get out of jail.`
+    }));
   };
 
   return (
@@ -1059,7 +1204,7 @@ function App() {
               />
               
               {/* Dice display */}
-              {[GamePhase.Rolling, GamePhase.PropertyAction, GamePhase.Auctioning, GamePhase.EndTurn].includes(gameState.phase) && (
+              {[GamePhase.Rolling, GamePhase.PropertyAction, GamePhase.Auctioning, GamePhase.EndTurn, GamePhase.JailDecision].includes(gameState.phase) && (
                 <div className="bg-white p-4 rounded-lg shadow mt-4 flex justify-center space-x-4">
                   {renderDie(gameState.dice[0])}
                   {renderDie(gameState.dice[1])}
@@ -1093,6 +1238,14 @@ function App() {
                     setBidIncrement={setBidIncrement}
                   />
                 </div>
+              ) : gameState.phase === GamePhase.JailDecision ? (
+                <div className="mt-4">
+                  <JailActionPanel 
+                    currentPlayer={gameState.players[gameState.currentPlayerIndex]}
+                    onPayJailFine={payJailFine}
+                    onRollForJail={rollForJail}
+                  />
+                </div>
               ) : (
                 <div className="mt-4">
                   <ActionPanel 
@@ -1108,7 +1261,7 @@ function App() {
               )}
             </div>
             
-            {/* Center - Game board (now spans 9 columns instead of 6) */}
+            {/* Center - Game board */}
             <div className="lg:col-span-9 flex justify-center">
               <div className="w-full max-w-4xl">
                 <Board 

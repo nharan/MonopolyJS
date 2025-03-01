@@ -13,6 +13,10 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
   const sideSquareWidth = 69; // Increased from 53 to 69 (30% larger)
   const sideSquareHeight = 104; // Increased from 80 to 104 (30% larger)
   
+  // Get the current GO salary amount from the first player (all players have the same GO salary)
+  const goSalary = players.length > 0 ? players[0].goSalary : 200;
+  const isRecession = players.length > 0 ? players[0].goSalaryDirection > 0 : false;
+  
   // Helper function to get property color
   const getPropertyColor = (property: Property): string => {
     if (property.type !== 'property') return '#e5e7eb';
@@ -252,7 +256,31 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
               
               {/* Special icons for corners and special spaces */}
               {property.position === 0 && (
-                <text x={pos.width/2} y={pos.height/2} textAnchor="middle" fontSize="42" fontWeight="bold" fill="#0369a1">GO</text>
+                <>
+                  <text x={pos.width/2} y={pos.height/2 - 30} textAnchor="middle" fontSize="42" fontWeight="bold" fill="#0369a1">GO</text>
+                  <text 
+                    x={pos.width/2} 
+                    y={pos.height/2 + 10} 
+                    textAnchor="middle" 
+                    fontSize="32" 
+                    fontWeight="bold" 
+                    fill={isRecession ? "#dc2626" : "#16a34a"}
+                  >
+                    {isRecession ? "-" : ""}${goSalary}
+                  </text>
+                  {isRecession && (
+                    <text 
+                      x={pos.width/2} 
+                      y={pos.height/2 + 40} 
+                      textAnchor="middle" 
+                      fontSize="20" 
+                      fontWeight="bold" 
+                      fill="#dc2626"
+                    >
+                      RECESSION
+                    </text>
+                  )}
+                </>
               )}
               {property.position === 10 && (
                 <text x={pos.width/2} y={pos.height/2} textAnchor="middle" fontSize="42" fontWeight="bold" fill="#b91c1c">JAIL</text>
