@@ -4,8 +4,10 @@ import Board from './components/Board';
 import PlayerPanel from './components/PlayerPanel';
 import ActionPanel from './components/ActionPanel';
 import AuctionPanel from './components/AuctionPanel';
-import { Player, Property, GamePhase, GameState, Card, CardType } from './types';
+import { Player, Property, GamePhase, GameState, Card, CardType, AIStrategy } from './types';
 import { initialProperties, chanceCards, communityChestCards } from './data';
+import { AIStrategyFactory } from './ai/AIStrategyFactory';
+import { AIDecisionContext } from './ai/AIStrategyInterface';
 
 function App() {
   const [gameState, setGameState] = useState<GameState>({
@@ -29,6 +31,7 @@ function App() {
 
   const [numPlayers, setNumPlayers] = useState<number>(2);
   const [numAIPlayers, setNumAIPlayers] = useState<number>(0);
+  const [aiStrategy, setAIStrategy] = useState<AIStrategy>(AIStrategy.Balanced);
   const [bidAmount, setBidAmount] = useState<string>("");
   const [bidIncrement, setBidIncrement] = useState<number>(1);
 
@@ -45,47 +48,148 @@ function App() {
     }
   }, [gameState.currentPlayerIndex, gameState.phase]);
 
+  // Special effect for handling AI bidding during auctions
+  useEffect(() => {
+    // Only run this effect during auctions when it's an AI's turn to bid
+    if (gameState.phase === GamePhase.Auctioning && 
+        gameState.players[gameState.auctionCurrentBidder]?.isAI) {
+      console.log(`AI bidding turn detected for ${gameState.players[gameState.auctionCurrentBidder].name}`);
+      
+      // Short delay to make AI bidding visible
+      const timeoutId = setTimeout(() => {
+        // Get the AI player who needs to bid
+        const currentPlayer = gameState.players[gameState.auctionCurrentBidder];
+        
+        // Get the appropriate strategy for this AI
+        const strategyType = currentPlayer.aiStrategy || AIStrategy.Balanced;
+        const strategy = AIStrategyFactory.getStrategy(strategyType);
+        
+        // Create the decision context
+        const context: AIDecisionContext = {
+          gameState,
+          currentPlayer,
+          property: gameState.auctionProperty || undefined,
+          currentBid: gameState.auctionHighestBid
+        };
+        
+        console.log(`AI ${currentPlayer.name} making bidding decision`);
+        
+        // CRITICAL FIX: Check if AI can afford to bid higher than current bid
+        const propertyValue = context.property?.price || 100;
+        const maxWillingToPay = Math.floor(propertyValue * 0.6); // AI will pay up to 60% of property value
+        const currentHighestBid = gameState.auctionHighestBid;
+        const minimumValidBid = currentHighestBid + 1;
+        
+        // Check if AI is already highest bidder
+        if (gameState.auctionHighestBidder === currentPlayer.id) {
+          console.log(`AI ${currentPlayer.name} is already highest bidder, passing`);
+          passBid();
+        } 
+        // Check if AI can afford to bid and if the current bid is below what AI is willing to pay
+        else if (minimumValidBid <= currentPlayer.money && minimumValidBid <= maxWillingToPay) {
+          // Calculate bid amount - either increment by 10% of property value or just above current bid
+          const bidIncrement = Math.max(5, Math.floor(propertyValue * 0.1));
+          const bidAmount = Math.min(
+            currentHighestBid + bidIncrement, // Preferred bid
+            maxWillingToPay, // Maximum willing to pay
+            currentPlayer.money // Maximum can afford
+          );
+          
+          // Ensure bid is at least 1 more than current highest
+          const finalBid = Math.max(bidAmount, minimumValidBid);
+          
+          console.log(`AI ${currentPlayer.name} bidding $${finalBid} (current highest: $${currentHighestBid}, max willing: $${maxWillingToPay})`);
+          placeBid(finalBid);
+        } 
+        // AI can't afford or doesn't want to bid higher
+        else {
+          console.log(`AI ${currentPlayer.name} passing - current bid $${currentHighestBid} too high (max willing: $${maxWillingToPay}, money: $${currentPlayer.money})`);
+          passBid();
+        }
+      }, 1000);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [gameState.auctionCurrentBidder, gameState.phase]);
+
   const handleAITurn = () => {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     
     if (!currentPlayer || !currentPlayer.isAI) return;
     
+    // Get the appropriate strategy for this AI
+    const strategyType = currentPlayer.aiStrategy || AIStrategy.Balanced;
+    const strategy = AIStrategyFactory.getStrategy(strategyType);
+    
+    // Create the decision context
+    const context: AIDecisionContext = {
+      gameState,
+      currentPlayer
+    };
+    
+    // Get thinking time for this AI
+    const thinkingTime = strategy.getThinkingTime();
+    
     switch (gameState.phase) {
       case GamePhase.Rolling:
-        rollDice();
+        // All AIs roll the dice when it's their turn
+        setTimeout(() => {
+          rollDice();
+        }, thinkingTime);
         break;
+        
       case GamePhase.PropertyAction:
-        // AI has 70% chance to auction
-        if (Math.random() < 0.7) {
-          startAuction();
-        } else {
-          pass();
-        }
+        // Decide whether to start auction based on strategy
+        context.property = gameState.properties.find(
+          p => p.position === currentPlayer.position
+        );
+        
+        setTimeout(() => {
+          if (strategy.shouldStartAuction(context)) {
+            startAuction();
+          } else {
+            pass();
+          }
+        }, thinkingTime);
         break;
+        
       case GamePhase.Auctioning:
-        // AI bidding strategy - bid if property value seems good
-        const property = gameState.auctionProperty;
-        if (!property) return;
+        // AI bidding strategy based on personality
+        context.property = gameState.auctionProperty || undefined;
+        context.currentBid = gameState.auctionHighestBid;
+        context.gameState = gameState;
         
-        const currentBid = gameState.auctionHighestBid;
-        const playerMoney = currentPlayer.money;
+        if (!context.property) return;
         
-        // AI will bid up to 80% of property price if they have enough money
-        const maxBid = Math.min(property.price * 0.8, playerMoney * 0.3);
+        console.log(`AI ${currentPlayer.name} turn to bid. Current highest bid: $${context.currentBid}, Highest bidder: ${gameState.auctionHighestBidder}, AI ID: ${currentPlayer.id}`);
+        console.log(`Property: ${context.property.name}, Price: $${context.property.price}, Type: ${context.property.type}`);
         
-        if (currentBid < maxBid) {
-          // Choose a bid increment based on current bid
-          let increment = 1;
-          if (currentBid > 100) increment = 50;
-          else if (currentBid > 50) increment = 25;
-          else if (currentBid > 10) increment = 10;
-          
-          const newBid = currentBid + increment;
-          placeBid(newBid);
+        // EMERGENCY FIX: Force immediate action with no conditions
+        // This ensures the AI always takes action during the auction
+        if (gameState.auctionHighestBidder === currentPlayer.id) {
+          // We're already the highest bidder, pass
+          console.log(`AI ${currentPlayer.name} is already highest bidder, passing`);
+          passBid();
+        } else if (gameState.auctionBids[currentPlayer.id] === 0) {
+          // First bid in the auction, make a small bid
+          const bidAmount = Math.max(10, Math.floor(context.property.price * 0.1));
+          console.log(`AI ${currentPlayer.name} making FORCED initial bid of $${bidAmount}`);
+          placeBid(bidAmount);
         } else {
+          // We've already bid once, now pass
+          console.log(`AI ${currentPlayer.name} passing after initial bid`);
           passBid();
         }
         break;
+        
+      case GamePhase.EndTurn:
+        // AI should automatically end its turn when in EndTurn phase
+        console.log(`AI ${currentPlayer.name} ending turn automatically`);
+        setTimeout(() => {
+          endTurn();
+        }, thinkingTime);
+        break;
+        
       default:
         break;
     }
@@ -139,6 +243,7 @@ function App() {
         getOutOfJailCards: 0,
         bankrupt: false,
         isAI: true,
+        aiStrategy: aiStrategy,
         color: playerColors[numPlayers + i],
         token: playerTokens[numPlayers + i],
         goSalary: 200,
@@ -174,6 +279,7 @@ function App() {
     let newPhase = GamePhase.EndTurn;
     let newMessage = "";
     let doubleRollCount = isDoubles ? gameState.doubleRollCount + 1 : 0;
+    let shouldAutoEndTurn = false; // Flag to automatically end turn
     
     // Check if player is in jail
     if (currentPlayer.inJail) {
@@ -191,6 +297,7 @@ function App() {
         } else {
           newMessage = `${currentPlayer.name} is still in jail (turn ${currentPlayer.jailTurns} of 3).`;
           newPhase = GamePhase.EndTurn;
+          shouldAutoEndTurn = true; // Auto end turn if still in jail
         }
       }
     } 
@@ -204,6 +311,7 @@ function App() {
         newMessage = `${currentPlayer.name} rolled doubles 3 times in a row and went to jail!`;
         newPhase = GamePhase.EndTurn;
         doubleRollCount = 0;
+        shouldAutoEndTurn = true; // Auto end turn when sent to jail
       } else {
         // Normal movement
         newPosition = (currentPlayer.position + diceSum) % 40;
@@ -235,6 +343,7 @@ function App() {
             if (currentPlayer.money < 0) {
               currentPlayer.bankrupt = true;
               newMessage += ` ${currentPlayer.name} went bankrupt!`;
+              shouldAutoEndTurn = true; // Auto end turn on bankruptcy
             }
           }
         }
@@ -264,11 +373,14 @@ function App() {
                 }
                 
                 newMessage = `${currentPlayer.name} paid $${rent} rent to ${owner.name}.`;
+                shouldAutoEndTurn = true; // Auto end turn after paying rent
+                newPhase = GamePhase.EndTurn; // Set phase to EndTurn
                 
                 // Check for bankruptcy
                 if (currentPlayer.money < 0) {
                   currentPlayer.bankrupt = true;
                   newMessage += ` ${currentPlayer.name} went bankrupt!`;
+                  shouldAutoEndTurn = true; // Auto end turn on bankruptcy
                 }
                 
                 // Update all players
@@ -285,16 +397,28 @@ function App() {
                 
                 // Check for game over
                 checkGameOver(updatedPlayers);
+                
+                // Auto end turn if needed
+                if (shouldAutoEndTurn) {
+                  setTimeout(() => {
+                    endTurn();
+                  }, 1500);
+                }
+                
                 return;
               }
             } else {
               newMessage = `${currentPlayer.name} landed on their own property: ${landedSpace.name}.`;
+              shouldAutoEndTurn = true; // Auto end turn when landing on own property
+              newPhase = GamePhase.EndTurn; // Set phase to EndTurn
             }
           } else if (landedSpace.type === 'tax') {
             // Pay tax
             const taxAmount = landedSpace.position === 4 ? 200 : 100; // Income tax or luxury tax
             currentPlayer.money -= taxAmount;
             newMessage = `${currentPlayer.name} paid $${taxAmount} in taxes.`;
+            shouldAutoEndTurn = true; // Auto end turn after paying tax
+            newPhase = GamePhase.EndTurn; // Set phase to EndTurn
             
             // Check for bankruptcy
             if (currentPlayer.money < 0) {
@@ -307,6 +431,8 @@ function App() {
             if (card) {
               applyCard(card, currentPlayer);
               newMessage = `${currentPlayer.name} drew a Chance card: ${card.description}`;
+              shouldAutoEndTurn = true; // Auto end turn after drawing card
+              newPhase = GamePhase.EndTurn; // Set phase to EndTurn
             }
           } else if (landedSpace.type === 'community') {
             // Draw community chest card
@@ -314,15 +440,21 @@ function App() {
             if (card) {
               applyCard(card, currentPlayer);
               newMessage = `${currentPlayer.name} drew a Community Chest card: ${card.description}`;
+              shouldAutoEndTurn = true; // Auto end turn after drawing card
+              newPhase = GamePhase.EndTurn; // Set phase to EndTurn
             }
           } else if (landedSpace.position === 30) {
             // Go to jail
             currentPlayer.position = 10;
             currentPlayer.inJail = true;
             newMessage = `${currentPlayer.name} went to jail!`;
+            shouldAutoEndTurn = true; // Auto end turn when sent to jail
+            newPhase = GamePhase.EndTurn; // Set phase to EndTurn
           } else if (landedSpace.position === 20) {
             // Free parking - nothing happens
             newMessage = `${currentPlayer.name} landed on Free Parking.`;
+            shouldAutoEndTurn = true; // Auto end turn on free parking
+            newPhase = GamePhase.EndTurn; // Set phase to EndTurn
           }
         }
       }
@@ -343,6 +475,13 @@ function App() {
     
     // Check for game over
     checkGameOver(updatedPlayers);
+    
+    // Auto end turn if needed
+    if (shouldAutoEndTurn) {
+      setTimeout(() => {
+        endTurn();
+      }, 1500);
+    }
   };
 
   const drawCard = (type: 'chance' | 'community'): Card | null => {
@@ -461,12 +600,18 @@ function App() {
   };
 
   const placeBid = (amount: number) => {
-    if (gameState.phase !== GamePhase.Auctioning || !gameState.auctionProperty) return;
+    if (gameState.phase !== GamePhase.Auctioning || !gameState.auctionProperty) {
+      console.log("Cannot place bid: not in auction phase or no property");
+      return;
+    }
     
     const currentBidder = gameState.players[gameState.auctionCurrentBidder];
+    console.log(`DEBUG: ${currentBidder.name} attempting to bid $${amount}`);
+    console.log(`DEBUG: Current highest bid: $${gameState.auctionHighestBid}, Highest bidder: ${gameState.auctionHighestBidder}`);
     
     // Validate bid
     if (amount <= gameState.auctionHighestBid) {
+      console.log(`DEBUG: Bid rejected - must be higher than current highest bid of $${gameState.auctionHighestBid}`);
       setGameState({
         ...gameState,
         message: `Bid must be higher than the current highest bid of $${gameState.auctionHighestBid}.`
@@ -475,6 +620,7 @@ function App() {
     }
     
     if (amount > currentBidder.money) {
+      console.log(`DEBUG: Bid rejected - ${currentBidder.name} only has $${currentBidder.money}`);
       setGameState({
         ...gameState,
         message: `${currentBidder.name} doesn't have enough money for this bid.`
@@ -485,9 +631,11 @@ function App() {
     // Update auction state
     const newBids = { ...gameState.auctionBids };
     newBids[currentBidder.id] = amount;
+    console.log(`DEBUG: Updated bids: ${JSON.stringify(newBids)}`);
     
     // Find next bidder
     let nextBidderIndex = findNextBidder(gameState.auctionCurrentBidder);
+    console.log(`DEBUG: Next bidder index: ${nextBidderIndex}, name: ${gameState.players[nextBidderIndex].name}`);
     
     setGameState({
       ...gameState,
@@ -502,25 +650,37 @@ function App() {
   };
 
   const passBid = () => {
-    if (gameState.phase !== GamePhase.Auctioning) return;
+    if (gameState.phase !== GamePhase.Auctioning) {
+      console.log("Cannot pass bid: not in auction phase");
+      return;
+    }
     
     const currentBidder = gameState.players[gameState.auctionCurrentBidder];
+    console.log(`${currentBidder.name} is passing their bid`);
+    console.log(`DEBUG: Current bidder ID: ${currentBidder.id}, auctionCurrentBidder: ${gameState.auctionCurrentBidder}`);
+    console.log(`DEBUG: Current bids: ${JSON.stringify(gameState.auctionBids)}`);
     
     // Mark player as passed by setting bid to -1
     const newBids = { ...gameState.auctionBids };
     newBids[currentBidder.id] = -1;
+    console.log(`DEBUG: Updated bids: ${JSON.stringify(newBids)}`);
     
     // Check if auction is over (only one bidder left)
     const activeBidders = Object.entries(newBids).filter(([_, bid]) => bid >= 0);
+    console.log(`Active bidders remaining: ${activeBidders.length}`);
+    console.log(`DEBUG: Active bidders: ${JSON.stringify(activeBidders)}`);
     
     if (activeBidders.length <= 1) {
       // Auction ended
+      console.log("Auction ending - only one or zero bidders left");
       endAuction();
       return;
     }
     
     // Find next bidder
     let nextBidderIndex = findNextBidder(gameState.auctionCurrentBidder);
+    console.log(`Next bidder: ${gameState.players[nextBidderIndex].name}`);
+    console.log(`DEBUG: Next bidder index: ${nextBidderIndex}`);
     
     setGameState({
       ...gameState,
@@ -758,6 +918,45 @@ function App() {
               </div>
               <p className="text-sm text-gray-500 mt-1">Total players: {numPlayers + numAIPlayers} (2-4 required)</p>
             </div>
+            
+            {numAIPlayers > 0 && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  AI Strategy:
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button 
+                    className={`py-2 px-3 rounded-md text-sm ${aiStrategy === AIStrategy.Passive 
+                      ? 'bg-blue-500 text-white' 
+                      : 'bg-gray-200 text-gray-700'}`}
+                    onClick={() => setAIStrategy(AIStrategy.Passive)}
+                  >
+                    Passive
+                  </button>
+                  <button 
+                    className={`py-2 px-3 rounded-md text-sm ${aiStrategy === AIStrategy.Balanced 
+                      ? 'bg-blue-500 text-white' 
+                      : 'bg-gray-200 text-gray-700'}`}
+                    onClick={() => setAIStrategy(AIStrategy.Balanced)}
+                  >
+                    Balanced
+                  </button>
+                  <button 
+                    className={`py-2 px-3 rounded-md text-sm ${aiStrategy === AIStrategy.Aggressive 
+                      ? 'bg-blue-500 text-white' 
+                      : 'bg-gray-200 text-gray-700'}`}
+                    onClick={() => setAIStrategy(AIStrategy.Aggressive)}
+                  >
+                    Aggressive
+                  </button>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  {aiStrategy === AIStrategy.Passive && "Passive AIs bid conservatively and are less likely to start auctions."}
+                  {aiStrategy === AIStrategy.Balanced && "Balanced AIs use moderate bidding strategies."}
+                  {aiStrategy === AIStrategy.Aggressive && "Aggressive AIs bid higher and are more likely to start auctions."}
+                </p>
+              </div>
+            )}
             
             <button 
               className="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 transition-colors"

@@ -1,6 +1,6 @@
 import React from 'react';
-import { DollarSign, Home, Users } from 'lucide-react';
-import { Player, Property } from '../types';
+import { DollarSign, Home, Users, Bot } from 'lucide-react';
+import { Player, Property, AIStrategy } from '../types';
 
 interface PlayerPanelProps {
   players: Player[];
@@ -82,6 +82,21 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({ players, currentPlayerIndex, 
                   <span className="font-bold">{player.money}</span>
                 </div>
               </div>
+              
+              {/* AI Strategy */}
+              {player.isAI && player.aiStrategy && (
+                <div className="text-xs mb-2 flex items-center">
+                  <Bot size={12} className="mr-1" />
+                  <span className="font-medium">Strategy: </span>
+                  <span className={`ml-1 ${
+                    player.aiStrategy === AIStrategy.Aggressive ? 'text-red-500' : 
+                    player.aiStrategy === AIStrategy.Passive ? 'text-blue-500' : 
+                    'text-green-500'
+                  }`}>
+                    {player.aiStrategy.charAt(0).toUpperCase() + player.aiStrategy.slice(1)}
+                  </span>
+                </div>
+              )}
               
               {/* GO Salary Status */}
               <div className="text-sm mb-2">

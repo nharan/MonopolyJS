@@ -7,6 +7,12 @@ export enum GamePhase {
   GameOver = 'gameOver'
 }
 
+export enum AIStrategy {
+  Passive = 'passive',
+  Balanced = 'balanced',
+  Aggressive = 'aggressive'
+}
+
 export interface Player {
   id: number;
   name: string;
@@ -18,6 +24,7 @@ export interface Player {
   getOutOfJailCards: number;
   bankrupt: boolean;
   isAI: boolean;
+  aiStrategy?: AIStrategy; // Strategy for AI players
   color: string;
   token: string;
   goSalary: number;
