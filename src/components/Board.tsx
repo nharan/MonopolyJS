@@ -8,124 +8,339 @@ interface BoardProps {
 
 const Board: React.FC<BoardProps> = ({ properties, players }) => {
   // Board layout configuration
-  const boardSize = 11; // 11x11 grid
-  const cellSize = 55; // Reduced size of each cell in pixels
-  const boardWidth = boardSize * cellSize;
-  const boardHeight = boardSize * cellSize;
+  const boardSize = 600; // Overall board size in pixels
+  const cornerSize = 80; // Size of corner squares
+  const sideSquareWidth = 40; // Width of side squares (reduced to fit all properties)
+  const sideSquareHeight = 60; // Height of side squares (reduced to fit all properties)
   
   // Helper function to get property color
   const getPropertyColor = (property: Property): string => {
-    if (property.type !== 'property') return 'bg-gray-200';
+    if (property.type !== 'property') return '#e5e7eb';
     
     switch (property.group) {
-      case 'brown': return 'bg-amber-800';
-      case 'light-blue': return 'bg-sky-300';
-      case 'pink': return 'bg-pink-400';
-      case 'orange': return 'bg-orange-500';
-      case 'red': return 'bg-red-600';
-      case 'yellow': return 'bg-yellow-400';
-      case 'green': return 'bg-green-600';
-      case 'dark-blue': return 'bg-blue-800';
-      default: return 'bg-gray-200';
+      case 'brown': return '#92400e';
+      case 'light-blue': return '#7dd3fc';
+      case 'pink': return '#f472b6';
+      case 'orange': return '#f97316';
+      case 'red': return '#dc2626';
+      case 'yellow': return '#facc15';
+      case 'green': return '#16a34a';
+      case 'dark-blue': return '#1e40af';
+      default: return '#e5e7eb';
     }
   };
   
   // Helper function to get property border color based on owner
   const getPropertyBorder = (property: Property): string => {
-    if (property.ownerId === null) return 'border-gray-300';
+    if (property.ownerId === null) return '#d1d5db';
     
     const owner = players.find(p => p.id === property.ownerId);
-    return owner ? `border-2 border-${owner.color.replace('#', '')}` : 'border-gray-300';
+    return owner ? owner.color : '#d1d5db';
   };
   
-  // Helper function to get cell position
-  const getCellPosition = (position: number): { x: number, y: number } => {
+  // Calculate positions for each property
+  const getPropertyPosition = (position: number) => {
+    const boardPadding = 10;
+    const effectiveBoardSize = boardSize - 2 * boardPadding;
+    
     // Bottom row (0-10)
-    if (position <= 10) {
-      return { x: 10 - position, y: 10 };
+    if (position >= 0 && position <= 10) {
+      if (position === 0) {
+        return {
+          x: boardPadding + effectiveBoardSize - cornerSize,
+          y: boardPadding + effectiveBoardSize - cornerSize,
+          width: cornerSize,
+          height: cornerSize,
+          rotation: 0
+        };
+      } else if (position === 10) {
+        return {
+          x: boardPadding,
+          y: boardPadding + effectiveBoardSize - cornerSize,
+          width: cornerSize,
+          height: cornerSize,
+          rotation: 0
+        };
+      } else {
+        // Calculate position for properties 1-9
+        const totalWidth = effectiveBoardSize - 2 * cornerSize;
+        const propertyWidth = totalWidth / 9; // 9 properties between corners
+        return {
+          x: boardPadding + cornerSize + (9 - position) * propertyWidth,
+          y: boardPadding + effectiveBoardSize - sideSquareHeight,
+          width: propertyWidth,
+          height: sideSquareHeight,
+          rotation: 0
+        };
+      }
     }
     // Left column (11-20)
-    else if (position <= 20) {
-      return { x: 0, y: 10 - (position - 10) };
+    else if (position >= 11 && position <= 20) {
+      if (position === 20) {
+        return {
+          x: boardPadding,
+          y: boardPadding,
+          width: cornerSize,
+          height: cornerSize,
+          rotation: 0
+        };
+      } else {
+        // Calculate position for properties 11-19
+        const totalHeight = effectiveBoardSize - 2 * cornerSize;
+        const propertyHeight = totalHeight / 9; // 9 properties between corners
+        return {
+          x: boardPadding,
+          y: boardPadding + cornerSize + (19 - position) * propertyHeight,
+          width: sideSquareHeight,
+          height: propertyHeight,
+          rotation: 90
+        };
+      }
     }
     // Top row (21-30)
-    else if (position <= 30) {
-      return { x: position - 20, y: 0 };
+    else if (position >= 21 && position <= 30) {
+      if (position === 30) {
+        return {
+          x: boardPadding + effectiveBoardSize - cornerSize,
+          y: boardPadding,
+          width: cornerSize,
+          height: cornerSize,
+          rotation: 0
+        };
+      } else {
+        // Calculate position for properties 21-29
+        const totalWidth = effectiveBoardSize - 2 * cornerSize;
+        const propertyWidth = totalWidth / 9; // 9 properties between corners
+        return {
+          x: boardPadding + cornerSize + (position - 21) * propertyWidth,
+          y: boardPadding,
+          width: propertyWidth,
+          height: sideSquareHeight,
+          rotation: 180
+        };
+      }
     }
     // Right column (31-39)
     else {
-      return { x: 10, y: position - 30 };
+      // Calculate position for properties 31-39
+      const totalHeight = effectiveBoardSize - 2 * cornerSize;
+      const propertyHeight = totalHeight / 9; // 9 properties between corners
+      return {
+        x: boardPadding + effectiveBoardSize - sideSquareHeight,
+        y: boardPadding + cornerSize + (position - 31) * propertyHeight,
+        width: sideSquareHeight,
+        height: propertyHeight,
+        rotation: 270
+      };
     }
   };
   
   // Render the board
   return (
     <div className="bg-white p-4 rounded-lg shadow">
-      <div 
-        className="relative bg-green-100 border border-gray-300 mx-auto"
-        style={{ width: `${boardWidth}px`, height: `${boardHeight}px` }}
+      <svg 
+        width={boardSize} 
+        height={boardSize} 
+        viewBox={`0 0 ${boardSize} ${boardSize}`}
+        className="mx-auto"
       >
-        {/* Center text */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <h2 className="text-3xl font-bold text-green-800 transform -rotate-45">MONOPOLY</h2>
-        </div>
+        {/* Board background */}
+        <defs>
+          <linearGradient id="boardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#d1fae5" />
+            <stop offset="100%" stopColor="#a7f3d0" />
+          </linearGradient>
+        </defs>
+        
+        <rect 
+          x="10" 
+          y="10" 
+          width={boardSize - 20} 
+          height={boardSize - 20} 
+          fill="url(#boardGradient)" 
+          stroke="#047857" 
+          strokeWidth="2"
+          rx="5"
+        />
+        
+        {/* Center logo */}
+        <g transform={`translate(${boardSize/2}, ${boardSize/2})`}>
+          <rect 
+            x="-120" 
+            y="-40" 
+            width="240" 
+            height="80" 
+            fill="#ecfdf5" 
+            rx="10" 
+            transform="rotate(0)"
+            stroke="#047857"
+            strokeWidth="1"
+          />
+          <text 
+            textAnchor="middle" 
+            fontSize="48" 
+            fontWeight="bold" 
+            fill="#047857" 
+            transform="rotate(0)"
+          >
+            MONOPOLY
+          </text>
+        </g>
         
         {/* Properties */}
         {properties.map((property) => {
-          const { x, y } = getCellPosition(property.position);
+          const pos = getPropertyPosition(property.position);
           const isCorner = [0, 10, 20, 30].includes(property.position);
           
           return (
-            <div
-              key={property.position}
-              className={`absolute border ${getPropertyBorder(property)} ${isCorner ? 'w-14 h-14' : 
-                property.position % 10 === 0 ? 'w-14 h-9' : 'w-9 h-14'}`}
-              style={{
-                left: `${x * cellSize}px`,
-                top: `${y * cellSize}px`,
-                transform: property.position >= 11 && property.position <= 30 ? 'rotate(180deg)' : '',
-              }}
+            <g 
+              key={property.position} 
+              transform={`translate(${pos.x}, ${pos.y}) rotate(${pos.rotation}, ${pos.width/2}, ${pos.height/2})`}
             >
+              {/* Property background */}
+              <rect 
+                x="0" 
+                y="0" 
+                width={pos.width} 
+                height={pos.height} 
+                fill="white" 
+                stroke={getPropertyBorder(property)} 
+                strokeWidth="1"
+              />
+              
               {/* Property color bar */}
               {property.type === 'property' && (
-                <div 
-                  className={`${getPropertyColor(property)} h-3 w-full`}
-                ></div>
+                <rect 
+                  x="0" 
+                  y="0" 
+                  width={pos.width} 
+                  height="12" 
+                  fill={getPropertyColor(property)}
+                />
               )}
               
-              {/* Property name */}
-              <div className="text-xs font-semibold p-1 overflow-hidden text-center">
-                {property.name.split(' ').map((word, i) => (
-                  <span key={i} className="block leading-tight">{word}</span>
-                ))}
-              </div>
+              {/* Special property types */}
+              {property.type === 'railroad' && (
+                <rect 
+                  x="0" 
+                  y="0" 
+                  width={pos.width} 
+                  height="12" 
+                  fill="#1f2937"
+                />
+              )}
+              
+              {property.type === 'utility' && (
+                <rect 
+                  x="0" 
+                  y="0" 
+                  width={pos.width} 
+                  height="12" 
+                  fill="#4b5563"
+                />
+              )}
+              
+              {property.type === 'tax' && (
+                <rect 
+                  x="0" 
+                  y="0" 
+                  width={pos.width} 
+                  height="12" 
+                  fill="#7c2d12"
+                />
+              )}
+              
+              {/* Special icons for corners and special spaces */}
+              {property.position === 0 && (
+                <text x={pos.width/2} y={pos.height/2} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#0369a1">GO</text>
+              )}
+              {property.position === 10 && (
+                <text x={pos.width/2} y={pos.height/2} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#b91c1c">JAIL</text>
+              )}
+              {property.position === 20 && (
+                <text x={pos.width/2} y={pos.height/2 - 10} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#047857">FREE</text>
+              )}
+              {property.position === 20 && (
+                <text x={pos.width/2} y={pos.height/2 + 10} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#047857">PARKING</text>
+              )}
+              {property.position === 30 && (
+                <text x={pos.width/2} y={pos.height/2 - 10} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#b91c1c">GO TO</text>
+              )}
+              {property.position === 30 && (
+                <text x={pos.width/2} y={pos.height/2 + 10} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#b91c1c">JAIL</text>
+              )}
+              
+              {/* Property name - only for non-corner spaces */}
+              {!isCorner && (
+                <text 
+                  x={pos.width/2} 
+                  y={property.type === 'property' || property.type === 'railroad' || property.type === 'utility' || property.type === 'tax' ? 22 : 20} 
+                  textAnchor="middle" 
+                  fontSize="7" 
+                  fontWeight="bold"
+                >
+                  {property.name.length > 10 ? property.name.substring(0, 8) + '...' : property.name}
+                </text>
+              )}
               
               {/* Property price */}
-              {property.price > 0 && (
-                <div className="text-xs text-center">
+              {property.price > 0 && !isCorner && (
+                <text 
+                  x={pos.width/2} 
+                  y={pos.height - 8} 
+                  textAnchor="middle" 
+                  fontSize="8"
+                >
                   ${property.price}
-                </div>
+                </text>
               )}
-              
-              {/* Players on this space */}
-              <div className="absolute bottom-0 left-0 right-0 flex flex-wrap justify-center">
-                {players
-                  .filter(player => player.position === property.position && !player.bankrupt)
-                  .map(player => (
-                    <div 
-                      key={player.id}
-                      className="w-4 h-4 m-0.5 rounded-full flex items-center justify-center text-xs"
-                      style={{ backgroundColor: player.color }}
-                    >
-                      {player.token}
-                    </div>
-                  ))
-                }
-              </div>
-            </div>
+            </g>
           );
         })}
-      </div>
+        
+        {/* Players */}
+        {players.filter(p => !p.bankrupt).map((player) => {
+          const property = properties.find(p => p.position === player.position);
+          if (!property) return null;
+          
+          const pos = getPropertyPosition(property.position);
+          const playerIndex = players.filter(p => p.position === property.position && !p.bankrupt)
+            .findIndex(p => p.id === player.id);
+          
+          // Calculate player token position within the property
+          const tokenSize = 16;
+          const tokenMargin = 4;
+          const tokensPerRow = Math.floor(pos.width / (tokenSize + tokenMargin));
+          const row = Math.floor(playerIndex / tokensPerRow);
+          const col = playerIndex % tokensPerRow;
+          
+          const tokenX = pos.x + tokenMargin + col * (tokenSize + tokenMargin);
+          const tokenY = pos.y + pos.height - tokenSize - tokenMargin - row * (tokenSize + tokenMargin);
+          
+          return (
+            <g key={player.id} transform={`translate(${tokenX}, ${tokenY})`}>
+              <circle 
+                cx={tokenSize/2} 
+                cy={tokenSize/2} 
+                r={tokenSize/2} 
+                fill={player.color} 
+                stroke="white" 
+                strokeWidth="1.5"
+              />
+              <text 
+                x={tokenSize/2} 
+                y={tokenSize/2 + 3} 
+                textAnchor="middle" 
+                fontSize="10" 
+                fill="white"
+                fontWeight="bold"
+              >
+                {player.token}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
     </div>
   );
 };
