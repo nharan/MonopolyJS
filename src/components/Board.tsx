@@ -9,7 +9,7 @@ interface BoardProps {
 const Board: React.FC<BoardProps> = ({ properties, players }) => {
   // Board layout configuration
   const boardSize = 11; // 11x11 grid
-  const cellSize = 60; // Size of each cell in pixels
+  const cellSize = 55; // Reduced size of each cell in pixels
   const boardWidth = boardSize * cellSize;
   const boardHeight = boardSize * cellSize;
   
@@ -62,7 +62,7 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
   return (
     <div className="bg-white p-4 rounded-lg shadow">
       <div 
-        className="relative bg-green-100 border border-gray-300"
+        className="relative bg-green-100 border border-gray-300 mx-auto"
         style={{ width: `${boardWidth}px`, height: `${boardHeight}px` }}
       >
         {/* Center text */}
@@ -78,8 +78,8 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
           return (
             <div
               key={property.position}
-              className={`absolute border ${getPropertyBorder(property)} ${isCorner ? 'w-16 h-16' : 
-                property.position % 10 === 0 ? 'w-16 h-10' : 'w-10 h-16'}`}
+              className={`absolute border ${getPropertyBorder(property)} ${isCorner ? 'w-14 h-14' : 
+                property.position % 10 === 0 ? 'w-14 h-9' : 'w-9 h-14'}`}
               style={{
                 left: `${x * cellSize}px`,
                 top: `${y * cellSize}px`,

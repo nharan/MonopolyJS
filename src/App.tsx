@@ -767,9 +767,9 @@ function App() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* Left panel - Player info */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-3">
               <PlayerPanel 
                 players={gameState.players} 
                 currentPlayerIndex={gameState.currentPlayerIndex}
@@ -777,7 +777,7 @@ function App() {
               />
               
               {/* Dice display */}
-              {gameState.phase !== GamePhase.Setup && (
+              {[GamePhase.Rolling, GamePhase.PropertyAction, GamePhase.Auctioning, GamePhase.EndTurn].includes(gameState.phase) && (
                 <div className="bg-white p-4 rounded-lg shadow mt-4 flex justify-center space-x-4">
                   {renderDie(gameState.dice[0])}
                   {renderDie(gameState.dice[1])}
@@ -786,7 +786,7 @@ function App() {
             </div>
             
             {/* Center - Game board */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-6 flex justify-center">
               <Board 
                 properties={gameState.properties}
                 players={gameState.players}
@@ -794,7 +794,7 @@ function App() {
             </div>
             
             {/* Right panel - Actions */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-3">
               {gameState.phase === GamePhase.Auctioning ? (
                 <AuctionPanel 
                   property={gameState.auctionProperty}
