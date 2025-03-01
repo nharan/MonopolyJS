@@ -205,7 +205,7 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
                 height={pos.height} 
                 fill="white" 
                 stroke={getPropertyBorder(property)} 
-                strokeWidth="1"
+                strokeWidth="2"
               />
               
               {/* Property color bar */}
@@ -214,7 +214,7 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
                   x="0" 
                   y="0" 
                   width={pos.width} 
-                  height="16" 
+                  height="20" 
                   fill={getPropertyColor(property)}
                 />
               )}
@@ -225,7 +225,7 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
                   x="0" 
                   y="0" 
                   width={pos.width} 
-                  height="16" 
+                  height="20" 
                   fill="#1f2937"
                 />
               )}
@@ -235,7 +235,7 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
                   x="0" 
                   y="0" 
                   width={pos.width} 
-                  height="16" 
+                  height="20" 
                   fill="#4b5563"
                 />
               )}
@@ -245,41 +245,42 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
                   x="0" 
                   y="0" 
                   width={pos.width} 
-                  height="16" 
+                  height="20" 
                   fill="#7c2d12"
                 />
               )}
               
               {/* Special icons for corners and special spaces */}
               {property.position === 0 && (
-                <text x={pos.width/2} y={pos.height/2} textAnchor="middle" fontSize="24" fontWeight="bold" fill="#0369a1">GO</text>
+                <text x={pos.width/2} y={pos.height/2} textAnchor="middle" fontSize="32" fontWeight="bold" fill="#0369a1">GO</text>
               )}
               {property.position === 10 && (
-                <text x={pos.width/2} y={pos.height/2} textAnchor="middle" fontSize="24" fontWeight="bold" fill="#b91c1c">JAIL</text>
+                <text x={pos.width/2} y={pos.height/2} textAnchor="middle" fontSize="32" fontWeight="bold" fill="#b91c1c">JAIL</text>
               )}
               {property.position === 20 && (
-                <text x={pos.width/2} y={pos.height/2 - 15} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#047857">FREE</text>
+                <text x={pos.width/2} y={pos.height/2 - 15} textAnchor="middle" fontSize="22" fontWeight="bold" fill="#047857">FREE</text>
               )}
               {property.position === 20 && (
-                <text x={pos.width/2} y={pos.height/2 + 15} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#047857">PARKING</text>
+                <text x={pos.width/2} y={pos.height/2 + 15} textAnchor="middle" fontSize="22" fontWeight="bold" fill="#047857">PARKING</text>
               )}
               {property.position === 30 && (
-                <text x={pos.width/2} y={pos.height/2 - 15} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#b91c1c">GO TO</text>
+                <text x={pos.width/2} y={pos.height/2 - 15} textAnchor="middle" fontSize="22" fontWeight="bold" fill="#b91c1c">GO TO</text>
               )}
               {property.position === 30 && (
-                <text x={pos.width/2} y={pos.height/2 + 15} textAnchor="middle" fontSize="16" fontWeight="bold" fill="#b91c1c">JAIL</text>
+                <text x={pos.width/2} y={pos.height/2 + 15} textAnchor="middle" fontSize="22" fontWeight="bold" fill="#b91c1c">JAIL</text>
               )}
               
               {/* Property name - only for non-corner spaces */}
               {!isCorner && (
                 <text 
                   x={pos.width/2} 
-                  y={property.type === 'property' || property.type === 'railroad' || property.type === 'utility' || property.type === 'tax' ? 30 : 25} 
+                  y={property.type === 'property' || property.type === 'railroad' || property.type === 'utility' || property.type === 'tax' ? 35 : 30} 
                   textAnchor="middle" 
-                  fontSize="9" 
+                  fontSize="11" 
                   fontWeight="bold"
+                  style={{ textShadow: '0px 1px 1px rgba(0, 0, 0, 0.2)' }}
                 >
-                  {property.name.length > 12 ? property.name.substring(0, 10) + '...' : property.name}
+                  {property.name.length > 10 ? property.name.substring(0, 8) + '...' : property.name}
                 </text>
               )}
               
@@ -287,10 +288,11 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
               {property.price > 0 && !isCorner && (
                 <text 
                   x={pos.width/2} 
-                  y={pos.height - 10} 
+                  y={pos.height - 8} 
                   textAnchor="middle" 
-                  fontSize="11"
-                  fontWeight="medium"
+                  fontSize="14"
+                  fontWeight="bold"
+                  fill="#1e40af"
                 >
                   ${property.price}
                 </text>
@@ -309,7 +311,7 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
             .findIndex(p => p.id === player.id);
           
           // Calculate player token position within the property
-          const tokenSize = 22;
+          const tokenSize = 24;
           const tokenMargin = 5;
           const tokensPerRow = Math.floor(pos.width / (tokenSize + tokenMargin));
           const row = Math.floor(playerIndex / tokensPerRow);
@@ -327,16 +329,16 @@ const Board: React.FC<BoardProps> = ({ properties, players }) => {
                 fill={player.color} 
                 stroke="white" 
                 strokeWidth="2"
-                filter="drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.25))"
+                filter="drop-shadow(0px 2px 3px rgba(0, 0, 0, 0.3))"
               />
               <text 
                 x={tokenSize/2} 
-                y={tokenSize/2 + 4} 
+                y={tokenSize/2 + 5} 
                 textAnchor="middle" 
-                fontSize="14" 
+                fontSize="16" 
                 fill="white"
                 fontWeight="bold"
-                style={{ textShadow: '1px 1px 1px rgba(0, 0, 0, 0.5)' }}
+                style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)' }}
               >
                 {player.token}
               </text>
